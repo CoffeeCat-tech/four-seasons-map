@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>打卡地图</title>
+<style>
+html, body {
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: #000;
+}
+
+canvas {
+	display: block;
+	position: fixed;
+	inset: 0;
+	width: 100vw;
+	height: 100vh;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script src="map2.js"></script>
+
+<script>
+// 返回按钮处理器 - 从map2.js加载后添加
+window.addEventListener('load', function() {
+	const canvas = document.getElementById('game');
+	if (canvas) {
+		// 移除可能的旧事件监听器
+		canvas.onclick = null;
+        
+		// 添加点击处理器
+		canvas.addEventListener('click', function(e) {
+			// 获取canvas相对位置
+			const rect = canvas.getBoundingClientRect();
+			const screenX = e.clientX - rect.left;
+			const screenY = e.clientY - rect.top;
+            
+			const canvasWidth = rect.width;
+            
+			// 检测返回按钮（右上角）
+			if (screenX >= canvasWidth - 120 && screenX <= canvasWidth - 10 && 
+				screenY >= 10 && screenY <= 60) {
+				window.location.href = 'home.html';
+				return;
+			}
+            
+			// 让map2.js处理其他点击
+			// map2.js的addEventListener监听器会继续处理区域点击
+		});
+	}
+});
+</script>
+
+</body>
+</html>

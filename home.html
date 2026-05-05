@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>主界面</title>
+<style>
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+canvas {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const BASE_W = 1000;
+const BASE_H = 700;
+
+const bgImg = new Image();
+bgImg.src = "主界面.jpg";
+
+let cw = 0;
+let ch = 0;
+let dpr = 1;
+let transform = { scale: 1, offsetX: 0, offsetY: 0 };
+let time = 0;
+let hoverScale = 1;
+let targetScale = 1;
+let flowOffset = 0;
+let hoverButton = null;
+
+const points1 = [
+    [120,540],
+    [120,556],
+    [115,557],
+    [111,559],
+    [103,567],
+    [95,574],
+    [94,581],
+    [94,585],
+    [95,590],
+    [98,592],
+    [100,597],
+    [105,599],
+    [107,601],
+    [112,602],
+    [113,606],
+    [116,610],
+    [118,617],
+    [119,622],
+    [122,625],
+    [416,625],
+    [419,624],
+    [423,620],
+    [422,612],
+    [437,601],
+    [440,598],
+    [442,596],
+    [444,592],
+    [446,587],
+    [445,581],
+    [442,576],
+    [439,571],
+    [437,568],
+    [432,564],
+    [426,561],
+    [421,560],
+    [421,554],
+    [421,549],
+    [417,545],
+    [124,543],
+    [121,546]
+];
+const points2 = [
+    [570,557],
+    [567,560],
+    [562,564],
+    [557,566],
+    [552,571],
+    [547,578],
+    [545,583],
+    [553,595],
+    [556,598],
+    [561,602],
+    [564,606],
+    [569,608],
+    [571,615],
+    [576,622],
+    [868,623],
+    [873,618],
+    [874,608],
+    [888,601],
+    [898,583],
+    [891,570],
+    [882,564],
+    [878,560],
+    [875,559],
+    [873,551],
+    [869,544],
+    [577,543],
+    [572,547],
+    [571,556]
+];
+
+const buttons = [
+    { name: "map2", poly: points1, target: "map2.html" },
+    { name: "main", poly: points2, target: "index.html" }
+];
+
+function resizeCanvas() {
+    cw = canvas.clientWidth || window.innerWidth;
+    ch = canvas.clientHeight || window.innerHeight;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(ch * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const scale = Math.min(cw / BASE_W, ch / BASE_H);
+    transform = {
+        scale,
+        offsetX: (cw - BASE_W * scale) / 2,
+        offsetY: (ch - BASE_H * scale) / 2
+    };
+}
+
+function screenToBase(x, y) {
+    return {
+        x: (x - transform.offsetX) / transform.scale,
+        y: (y - transform.offsetY) / transform.scale
+    };
+}
+
+function pointInPolygon(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i][0], yi = poly[i][1];
+        const xj = poly[j][0], yj = poly[j][1];
+        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+function getPolygonCenter(poly) {
+    let cx = 0;
+    let cy = 0;
+    poly.forEach(pt => {
+        cx += pt[0];
+        cy += pt[1];
+    });
+    return { cx: cx / poly.length, cy: cy / poly.length };
+}
+
+function drawPolygonScaled(poly, scale) {
+    const center = getPolygonCenter(poly);
+    ctx.beginPath();
+    poly.forEach((pt, i) => {
+        const x = center.cx + (pt[0] - center.cx) * scale;
+        const y = center.cy + (pt[1] - center.cy) * scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+}
+
+function glowFlow(poly, color, scale = 1) {
+    const pulse = (Math.sin(time * 1.2) + 1) / 2;
+    flowOffset += 3;
+
+    ctx.save();
+    drawPolygonScaled(poly, scale);
+    ctx.fillStyle = `rgba(255,255,255,${0.05 + pulse * 0.06})`;
+    ctx.fill();
+
+    const shift = (flowOffset % 600) - 300;
+    const lineGrad = ctx.createLinearGradient(shift, 0, shift + 600, 0);
+    lineGrad.addColorStop(0, "rgba(255,255,255,0.05)");
+    lineGrad.addColorStop(0.4, color.replace("1)", "0.95)"));
+    lineGrad.addColorStop(0.7, "rgba(255,255,255,0.10)");
+    lineGrad.addColorStop(1, "rgba(255,255,255,0.05)");
+
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 6;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    drawPolygonScaled(poly, scale);
+    ctx.stroke();
+
+    ctx.shadowBlur = 28;
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 12;
+    drawPolygonScaled(poly, scale);
+    ctx.stroke();
+    ctx.restore();
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+canvas.onmousemove = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const pos = screenToBase(e.clientX - rect.left, e.clientY - rect.top);
+    const x = pos.x;
+    const y = pos.y;
+
+    hoverButton = null;
+    for (const button of buttons) {
+        if (pointInPolygon(x, y, button.poly)) {
+            hoverButton = button;
+            break;
+        }
+    }
+
+    targetScale = hoverButton ? 1.03 : 1;
+    canvas.style.cursor = hoverButton ? "pointer" : "default";
+};
+
+canvas.onclick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const pos = screenToBase(e.clientX - rect.left, e.clientY - rect.top);
+    const x = pos.x;
+    const y = pos.y;
+
+    for (const button of buttons) {
+        if (pointInPolygon(x, y, button.poly)) {
+            window.location.href = button.target;
+            return;
+        }
+    }
+};
+
+function draw() {
+    time += 0.05;
+    hoverScale += (targetScale - hoverScale) * 0.1;
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, cw, ch);
+
+    ctx.save();
+    ctx.translate(transform.offsetX, transform.offsetY);
+    ctx.scale(transform.scale, transform.scale);
+
+    if (bgImg.complete && bgImg.width > 0) {
+        ctx.drawImage(bgImg, 0, 0, BASE_W, BASE_H);
+    } else {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, BASE_W, BASE_H);
+    }
+
+    if (hoverButton) {
+        glowFlow(hoverButton.poly, "rgba(255,215,0,1)", hoverScale);
+    }
+
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "22px Arial";
+    // ctx.fillText("点击进入", 410, 610);
+    // ctx.fillText("点击进入", 735, 610);
+
+    ctx.restore();
+    requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+
+</body>
+</html>
